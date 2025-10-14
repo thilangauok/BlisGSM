@@ -47,8 +47,6 @@ String get_message = "";
 bool waitForModem(unsigned long timeout = 10000);
 void resetModem();
 void updateSerial();
-void readSerial1();
-void readSerial2();
 String readSerial3();
 
 String runCommand(String command, const int timeout, boolean debug);
@@ -235,60 +233,6 @@ void resetModem(){
   Serial.println("modem reset...");
 }
 
-void checkSerial(){
-  //put your main code here, to run repeatedly:
-  if(Serial1.available()>0){   
-     
-          //Serial.println("available"); 
-          char incomingByte = Serial1.read();
-          //Serial.println(incomingByte); 
-          
-          if(Serial1.find(target)){                  //If receive a new SMS
-             Serial.println("SMS received!"); 
-             sms_no = Serial1.parseInt();            //Get the SMS ID        
-             get_message = "AT+CMGR="+(String)sms_no; //The command of the content of the SMS
-             Serial.println("******************** Print the relay status *********************" );
-             Data_handling(get_message,500,DEBUG);    //Get the content of the SMS 
-             Serial.println("*****************************END*********************************" );
-         } 
-     }
-     while(Serial1.read() >= 0){} 
-}
-
-
-
-void updateSerial()
-{
-  delay(500);
-  while (Serial1.available())
-  {
-    Serial.write(Serial1.read());//Forward what Serial received to Software Serial Port
-  }
-}
-
-
-
-void readSerial2()
-{
-    String mSerial1 = "";
-    if(Serial1.available()){
-        mSerial1 = Serial1.readString();
-        Serial.println(mSerial1);
-        if(mRecived){
-            Serial.println("Message is:");
-            Serial.println(mSerial1);
-            mRecived = 0;
-        }
-        Serial.println(mSerial1);
-        if( mSerial1.indexOf("+CMTI: \"ME\",")>=0){
-            mRecived =1;
-            String mNo = mSerial1.substring(mSerial1.indexOf("=")+1,mSerial1.length()-1);
-            String cReadMessage = "AT+CMGR=" + mNo;
-            Serial1.write(cReadMessage.c_str());
-            Serial.println("New message received..! cmd sent"+cReadMessage);
-        }
-    }
-}
 
 String runCommand(String command, const int timeout, boolean debug)  //data handling function
 {
