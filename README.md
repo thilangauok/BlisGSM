@@ -1,5 +1,5 @@
 # SMS Relay Control via Elecrow Leonardo GSM/GPRS Module
-![Relay Control Demo](images/relay-demo.jpg)
+![Relay Control Demo](gsm_module.png)
 Control up to **4 relays** via **SMS commands** using the [Elecrow Leonardo GPRS/GSM IoT Board](https://www.elecrow.com/leonardo-gprs-gsm-iot-board.html). This project is perfect for **IoT**, **remote automation**, and **home/industrial control** systems.
 
 📲 **Send an SMS** like `R1O` to turn on relay 1, or `R1C` to turn it off — with instant feedback and acknowledgment messages sent back to your phone.
