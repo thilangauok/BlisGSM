@@ -48,6 +48,8 @@ bool waitForModem(unsigned long timeout = 10000);
 void resetModem();
 void updateSerial();
 String readSerial3();
+void sendSMS(String number, String message);
+bool debug=DEBUG;
 
 String runCommand(String command, const int timeout, boolean debug);
 
@@ -80,12 +82,22 @@ void setup() {
 
 void loop() {
     serialMessage = readSerial3();
+    if(serialMessage.indexOf("+CMT:")>=0){
+      Serial.println("Message received!");
+      Data_handling(serialMessage);
+      if(serialMessage.indexOf("R1O")){  
+          Serial.println("R1 Relay Open");
+      }else{
+          Serial.println("Different Message");
+      }
+    }
+    
     if(serialMessage.indexOf("+CMTI")>=0){
       Serial.println("Message received!");  
       mSeq = serialMessage.substring(serialMessage.indexOf(",")+1, serialMessage.length()-1);
       Serial.println("Message # "+mSeq); 
       serialMessage = runCommand("AT+CMGR="+mSeq, 500, DEBUG);
-      //Serial.println(serialMessage);
+      Serial.println("from method"+serialMessage);
 
       //Serial.println(serialMessage.indexOf("R1O"));
       //Serial.println("Extracted Message "+serialMessage.substring(serialMessage.indexOf("+")+1,serialMessage.length()-1));
@@ -94,68 +106,61 @@ void loop() {
     }
 }
 
-void Data_handling(String command, const int timeout, boolean debug)  //data handling function
-{
-    String response = "";    
-    //Serial1.println(command); 
-    long int time = millis();
-    while( (time+timeout) > millis()){
-      while(Serial1.available()){       
-        response += (char)Serial1.read(); 
-      }  
-    }  
-    
-    Serial.println(response);
-      
-   if (response.indexOf(R1O)>=0) {
-    digitalWrite(Relay1,HIGH);
-    if(debug){
-    Serial.println("Open Relay 1");
-    }
-    }
-   else if (response.indexOf(R1C)>=0) {
-    digitalWrite(Relay1,LOW);
-    if(debug){
-    Serial.println("Close Relay 1");
-    }
-   }
-   else if(response.indexOf(R2O)>=0) {
-    digitalWrite(Relay2,HIGH);
-    if(debug){
-    Serial.println("Open Relay 2");
-    }
-   }
-   else if(response.indexOf(R2C)>=0) {
-    digitalWrite(Relay2,LOW);
-    if(debug){
-    Serial.println("Close Relay 2");
-    }
-   }
-   else if (response.indexOf(R3O)>=0) {
-    digitalWrite(Relay3,HIGH);
-    if(debug){
-    Serial.println("Open Relay 3");
-    }
-   }
-   else if(response.indexOf(R3C)>=0) {
-    digitalWrite(Relay3,LOW);
-    if(debug){
-    Serial.println("Close Relay 3");
-    }
-   }
-   else if(response.indexOf(R4O)>=0) {
-    digitalWrite(Relay4,HIGH);
-    if(debug){
-    Serial.println("Open Relay 4");
-    }
-   } 
-   else if(response.indexOf(R4C)>=0) {
-    digitalWrite(Relay4,LOW);
-    if(debug){
-    Serial.println("Close Relay 4");
-    }
-   }else
-   Serial.println("....Error message....");
+void Data_handling(String response) {
+  response.toUpperCase();  // Convert input to uppercase once
+
+  // Extract sender's number from +CMT or +CMGR format
+  String senderNumber = "";
+  int startIndex = response.indexOf("\"") + 1;
+  int endIndex = response.indexOf("\"", startIndex);
+  if (startIndex > 0 && endIndex > startIndex) {
+    senderNumber = response.substring(startIndex, endIndex);
+    if (debug) Serial.println("Sender Number: " + senderNumber);
+  }
+
+  String ackMessage = "";
+
+  if (response.indexOf(R1C) >= 0) {
+    digitalWrite(Relay1, HIGH);
+    ackMessage = "Relay 1 Closed";
+  }
+  else if (response.indexOf(R1O) >= 0) {
+    digitalWrite(Relay1, LOW);
+    ackMessage = "Relay 1 Opened";
+  }
+  else if (response.indexOf(R2C) >= 0) {
+    digitalWrite(Relay2, HIGH);
+    ackMessage = "Relay 2 Closed";
+  }
+  else if (response.indexOf(R2O) >= 0) {
+    digitalWrite(Relay2, LOW);
+    ackMessage = "Relay 2 Opened";
+  }
+  else if (response.indexOf(R3C) >= 0) {
+    digitalWrite(Relay3, HIGH);
+    ackMessage = "Relay 3 Closed";
+  }
+  else if (response.indexOf(R3O) >= 0) {
+    digitalWrite(Relay3, LOW);
+    ackMessage = "Relay 3 Opened";
+  }
+  else if (response.indexOf(R4C) >= 0) {
+    digitalWrite(Relay4, HIGH);
+    ackMessage = "Relay 4 Closed";
+  }
+  else if (response.indexOf(R4O) >= 0) {
+    digitalWrite(Relay4, LOW);
+    ackMessage = "Relay 4 Opened";
+  }
+  else {
+    ackMessage = "Unrecognized command.";
+  }
+
+  if (senderNumber.length() > 0) {
+    sendSMS(senderNumber, ackMessage);
+  }
+
+  if (debug) Serial.println("Ack: " + ackMessage);
 }
 
 
@@ -208,20 +213,21 @@ void initNZ(){
 
   Serial.println("******Configuring SIM800*******");
   delay(1000);
-  
   Serial1.print("AT\r\n");                    // Test
   delay(1000);
-  
   Serial1.print("AT+CSTT=\"vodafone\"\r\n");  // Set APN
   delay(2000);
   Serial1.print("AT+CMGF=1\r\n");//Set message mode to text
   delay(2000);
-  Serial1.print("AT+CIICR\r\n");              // Bring up wireless
+  Serial1.print("AT+CNMI=2,2,0,0,0\r\n");    // Show SMS instantly when received
   delay(2000);
   
+  /*
+  Serial1.print("AT+CIICR\r\n");              // Bring up wireless
+  delay(2000);
   Serial1.print("AT+CIFSR\r\n");              // Get IP
-
   Serial.println("Initialized for NZ.");
+  */
   
 }
 
@@ -263,4 +269,16 @@ String readSerial3()
         Serial.println("m: "+mSerial1);
     }
     return mSerial1;
+}
+
+void sendSMS(String number, String message) {
+  Serial1.println("AT+CMGF=1");  // Set SMS to text mode
+  delay(500);
+  Serial1.println("AT+CMGS=\"" + number + "\"");
+  delay(500);
+  Serial1.print(message);
+  Serial1.write(26);  // Ctrl+Z to send
+  if (debug) {
+    Serial.println("Sent SMS to " + number + ": " + message);
+  }
 }
