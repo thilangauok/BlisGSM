@@ -1,4 +1,4 @@
-# SMS Relay Control via Elecrow Leonardo GSM/GPRS Module
+# BlisGSM SMS Relay Control via Elecrow Leonardo GSM/GPRS Module
 
 ![Relay Control Demo](gsm_module.PNG)
 
